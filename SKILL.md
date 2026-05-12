@@ -193,6 +193,7 @@ DATA_CHECKS        ← 搜索页等常见 data 字段
 5. **`switchTab`/`redirectTo` 必须加超时** — 用 `Promise.race` 包装，设置 15s 超时
 6. **渲染层错误无法自动化捕获** — WXML/WXSS/数据绑定异常属于框架内部，报告中会注明
 7. **原始 winston 日志文件** — 编译错误可查 DevTools 日志文件（路径见 Step 2）
+8. **`page.$()` 无法选中 npm 自定义组件标签** — CSS 选择器引擎不支持 `t-*` 等 npm 包组件标签名。`testElementExists` 使用 **WXML class 扫描**替代 CSS 选择器：先获取 `pageEl.outerWxml()`，再用 `\b组件名\b` 正则匹配渲染 WXML 中的 CSS 类名（如 `t-tabs` 在 WXML 中渲染为 `<view class="t-tabs tabs--t-tabs ...">`）。交互测试（tap/input）仍需选择器命中，会标记为失败。
 
 ## 当此 skill 应被加载
 
@@ -244,3 +245,5 @@ miniProgram.on('exception', err => { /* JS 异常 */ });
 - `templates/diagnose.js` → 测试逻辑模板
 
 生成的脚本会自动过滤不可用的测试（如找不到元素则标记失败而非崩溃），报告会注明所有已知限制。
+
+**WXML class 扫描机制**：`testElementExists` 使用 WXML class 扫描替代 `page.$()` 选择器：获取 `page` 元素的 `outerWxml()`，用 `\b组件名\b` 正则匹配渲染 WXML 中的 CSS 类名。这是因为 tdesign 等 npm 自定义组件在渲染层被展平为原生元素（`view`、`button` 等），其组件名以 CSS class 形式出现（如 `<view class="t-tabs tabs--t-tabs ...">`）。此方法可检测所有渲染的组件，包括 CSS 选择器无法命中的 npm 组件。

@@ -357,16 +357,28 @@ function autoFix() {
 async function testElementExists(miniProgram, pageObj, pageRoute) {
   const checks = ELEMENT_CHECKS[pageRoute];
   if (!checks) return { passed: 0, failed: 0, skipped: 0, details: [] };
-  let p = 0, f = 0, s = 0;
+  let p = 0, f = 0;
   const det = [];
+  let pageWxml = null;
+  try {
+    const pageEl = await pageObj.$('page');
+    if (pageEl) pageWxml = await pageEl.outerWxml();
+  } catch (_) {}
   for (const c of checks) {
     try {
-      const el = await Promise.race([pageObj.$(c.selector), timeoutPromise(3000)]);
-      if (el) { p++; det.push({ selector: c.selector, desc: c.desc, status: '✓' }); }
-      else { f++; det.push({ selector: c.selector, desc: c.desc, status: '✗ 未找到' }); }
+      const isTagName = /^[a-zA-Z][\w-]*$/.test(c.selector);
+      if (pageWxml && isTagName) {
+        const clsRe = new RegExp('\\b' + c.selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
+        if (clsRe.test(pageWxml)) { p++; det.push({ selector: c.selector, desc: c.desc, status: '✓' }); }
+        else { f++; det.push({ selector: c.selector, desc: c.desc, status: '✗ 未找到' }); }
+      } else {
+        const el = await Promise.race([pageObj.$(c.selector), timeoutPromise(3000)]);
+        if (el) { p++; det.push({ selector: c.selector, desc: c.desc, status: '✓' }); }
+        else { f++; det.push({ selector: c.selector, desc: c.desc, status: '✗ 未找到' }); }
+      }
     } catch (e) { f++; det.push({ selector: c.selector, desc: c.desc, status: '✗ ' + e.message }); }
   }
-  return { passed: p, failed: f, skipped: s, details: det };
+  return { passed: p, failed: f, skipped: 0, details: det };
 }
 
 // 2. 按钮交互与跳转验证
