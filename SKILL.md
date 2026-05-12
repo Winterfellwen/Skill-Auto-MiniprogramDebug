@@ -123,13 +123,17 @@ node <项目路径>\tests\diagnose.js
 2. 对于 `[噪音]` 类：不修改代码，在最终报告中归类说明原因
 3. 最终报告包含：页面结果、6 个测试模块结果、errors/warnings 分类统计、各噪音项的简要解释
 
-**Step 7 — finally 断开连接 + 杀进程**
+**Step 7 — 断开连接 + 打开 DevTools 供用户查看**
 ```javascript
 miniProgram.disconnect();
 ```
+诊断完成后，保持 DevTools 运行并打开其窗口，让用户能直观看到模拟器状态、Console 面板等：
 ```powershell
-Get-Process -Name "wechatdevtools","微信开发者工具*" -ErrorAction SilentlyContinue | Stop-Process -Force
+cmd.exe /c "<CLI_PATH>" open --project <项目路径>
 ```
+然后打印提示告知用户可以查看效果了。
+
+注意：不要调用 `Stop-Process` 杀掉 DevTools。保持 DevTools 运行，用户会自行关闭。
 
 ---
 
