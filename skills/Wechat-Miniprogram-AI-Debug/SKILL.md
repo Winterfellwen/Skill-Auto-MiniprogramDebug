@@ -99,8 +99,8 @@ const miniProgram = await automator.connect({ wsEndpoint: 'ws://localhost:9420' 
 
 | 页面类型 | 方法 |
 |----------|------|
-| tabBar 页面 | `switchTab('/pages/index/index')` |
-| 非 tab 页面 | `redirectTo('/german/pages/learn/learn')` — 避免 navigateTo 撑爆页面栈 |
+| tabBar 页面 | `switchTab('<页面路径>')` |
+| 非 tab 页面 | `redirectTo('<页面路径>')` — 避免 navigateTo 撑爆页面栈 |
 
 ## 监听
 
