@@ -118,5 +118,6 @@ miniProgram.on('exception', err => { /* JS 异常 */ });
 
 ## 诊断脚本
 
-`tests/diagnose.js` — 基础诊断脚本
+`tests/diagnose.js` — 基础诊断脚本（遍历所有页面、搜索测试、console 捕获、生成报告）
+`tests/diagnose-full.js` — 全功能测试（含按钮点击交互、页面功能验证）
 `templates/diagnose.js` — 诊断脚本模板（参考使用）
