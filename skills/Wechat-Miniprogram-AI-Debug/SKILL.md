@@ -118,6 +118,5 @@ miniProgram.on('exception', err => { /* JS 异常 */ });
 
 ## 诊断脚本
 
-`tests/diagnose.js` — 自动启动 CLI → 遍历 26 页面 → 搜索测试 → console 捕获 → 报告
-`tests/diagnose-full.js` — 全功能测试（含按钮交互、PDF 转换模拟、30 页面验证）
-`templates/diagnose.js` — 备用模板 (同目录)
+`tests/diagnose.js` — 基础诊断脚本
+`templates/diagnose.js` — 诊断脚本模板（参考使用）
