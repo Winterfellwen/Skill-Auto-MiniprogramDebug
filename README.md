@@ -1,54 +1,83 @@
-# Skill-Auto-MiniprogramDebug
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
+  <img src="https://img.shields.io/badge/node-%3E%3D18-339933" alt="Node 18+">
+  <img src="https://img.shields.io/badge/OpenCode-compatible-6366f1" alt="OpenCode">
+  <img src="https://img.shields.io/badge/Claude%20Code-compatible-6366f1" alt="Claude Code">
+  <img src="https://img.shields.io/badge/Platform-Win-0078D4" alt="Windows">
+</p>
 
-微信小程序自动化测试 skill，用于 OpenCode / Claude Code 等 AI agent。
+<h1 align="center">WeChat Miniprogram Automation</h1>
 
-## 安装
+<p align="center">
+  AI-driven automated testing skill for WeChat Mini Programs.<br>
+  Leverages <code>miniprogram-automator</code> to run DevTools CLI, traverse pages, test search interactions, and capture console/exception output — all autonomously via OpenCode or Claude Code.
+</p>
 
-将 `skills/wechat-miniprogram-automation/` 复制到以下任一位置：
+---
 
-| 位置 | 作用域 |
-|------|--------|
-| `.opencode/skills/` | 项目 |
-| `~/.config/opencode/skills/` | 全局 |
-| `.claude/skills/` | 项目 (Claude 兼容) |
-| `~/.claude/skills/` | 全局 (Claude 兼容) |
+## Install
 
-## 内容
+Place `wechat-miniprogram-automation/` into one of these paths:
 
-- `SKILL.md` — skill 定义和行为规则
-- `templates/diagnose.js` — 自动化诊断脚本模板
+| Path | Scope |
+|------|-------|
+| `.opencode/skills/<name>/` | Project |
+| `~/.config/opencode/skills/<name>/` | Global |
+| `.claude/skills/<name>/` | Project (Claude) |
+| `~/.claude/skills/<name>/` | Global (Claude) |
+| `.agents/skills/<name>/` | Project (Agent) |
+| `~/.agents/skills/<name>/` | Global (Agent) |
 
-## 实战案例
+```bash
+# global install
+mkdir -p ~/.config/opencode/skills/wechat-miniprogram-automation
+cp -r skills/wechat-miniprogram-automation/* ~/.config/opencode/skills/wechat-miniprogram-automation/
+```
 
-在使用 skill 对 `E:\AI\wechatbot` 项目进行自动化调试的过程中，AI agent 在无人干预下自主完成了以下工作：
+## Contents
 
-### 任务
+| Path | Description |
+|------|-------------|
+| `SKILL.md` | Skill definition & AI behavioral rules |
+| `templates/diagnose.js` | Reusable diagnosis script template |
+
+---
+
+## Real-world Case Study
+
+The following session was executed entirely by an AI agent with zero human intervention — the agent inspected the project, discovered bugs, fixed them, and verified all tests pass.
+
+### Prompt
 
 ```
 帮我用 wechat-miniprogram-automation，调试 E:\AI\wechatbot 这个项目
 ```
 
-AI 自行检查 CLI 路径 → 验证服务端口 → 试跑基本测试 → 发现并修复 Bug → 全量回归。
+### Bugs Found & Fixed
 
-### 发现并修复的 Bug
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| `cp.path is not a function` | `miniprogram-automator` exposes `path` as a **property** (`this.path = e.path`), not a method | `await cp.path()` → `cp.path` |
+| `webview count limit exceed` | `navigateTo()` pushes pages onto the stack; WeChat caps it at ~10 layers. Traversing 23 pages blew the stack. | `navigateTo()` → `redirectTo()` (replaces current page, stack stays flat) |
 
-| Bug | 原因 | 修复 |
-|-----|------|------|
-| `cp.path is not a function` | `miniprogram-automator` 中 `Page.path` 是属性（`this.path = e.path`），不是方法 | `await cp.path()` → `cp.path` |
-| `webview count limit exceed` | 非 tab 页面用 `navigateTo()` 会压栈，微信小程序限制约 10 层，遍历 23 页时栈满崩溃 | `navigateTo()` → `redirectTo()`（替换当前页，不增加栈深度） |
-
-### 测试结果
+### Test Result
 
 ```
-23/23 页面导航 ✓ | 4/4 搜索测试 ✓ | 0 console errors ✓ | 0 JS 异常 ✓
+23/23  pages  ✓  |  4/4  search  ✓  |  0  console errors  ✓  |  0  JS exceptions  ✓
 ```
 
-### 附加改进
+### Improvements Made
 
-| 项目 | 改进前 | 改进后 |
-|------|--------|--------|
-| 首页启动耗时 | 无记录 | 显示 23102ms |
-| 页面导航失败 | 无重试 | 自动重试 1 次 |
-| 断开连接 | 无 | try/finally 保证断开 |
-| 进程残留 | 无 | 启动前自动清理旧进程 |
-| JSON 输出 | 无 | `--json` 标志支持 CI |
+| Area | Before | After |
+|------|--------|-------|
+| Startup timing | not tracked | logged as 23102ms |
+| Page nav failure | no retry | auto retry once |
+| Connection cleanup | none | try/finally guaranteed disconnect |
+| Process leak | none | auto-clean stale DevTools before launch |
+| CI output | none | `--json` flag for machine-readable output |
+
+---
+
+## License
+
+MIT
