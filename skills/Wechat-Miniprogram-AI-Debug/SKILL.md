@@ -43,7 +43,7 @@ Get-Process -Name "wechatdevtools","微信开发者工具*" -ErrorAction Silentl
    $json = Get-Content <项目路径>\app.json -Raw | ConvertFrom-Json
    $allPages = @()
    $json.pages | ForEach { $allPages += $_ }
-   $json.subpackages | ForEach { $_.pages | ForEach { $allPages += "$($_.root)/$_" } }
+   $json.subpackages | ForEach { $root = $_.root; $_.pages | ForEach { $allPages += "$root/$_" } }
    $allPages | Group-Object | Where-Object Count -gt 1 | ForEach { "重复: $($_.Name)" }
    $allPages | ForEach { if (!(Test-Path "<项目路径>/$_.wxml")) { "缺失: $_.wxml" } }
    ```
