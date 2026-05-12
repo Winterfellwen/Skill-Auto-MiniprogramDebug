@@ -35,12 +35,16 @@ Get-Process -Name "wechatdevtools","微信开发者工具*" -ErrorAction Silentl
 ```
 （先清理再启动，否则端口冲突）
 
-**Step 2 — 启动 DevTools 自动化服务**
-用 cmd.exe 包装 cli.bat（直接 spawn .bat 会报 EINVAL）：
-```powershell
-cmd.exe /c "E:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat" auto --project E:\AI\wechatbot --auto-port 9420
-```
-等待输出 `√ auto` 确认启动成功。
+**Step 2 — 查找 cli.bat 并启动 DevTools 自动化服务**
+
+1. 检查默认路径 `C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat`
+2. 如果不存在，依次检查其他盘符（D:、E:、F: 等）下的 `Program Files (x86)\Tencent\微信web开发者工具\cli.bat`
+3. 找到后，用 cmd.exe 包装启动（直接 spawn .bat 会报 EINVAL）：
+   ```powershell
+   cmd.exe /c "<找到的完整路径>" auto --project <项目路径> --auto-port 9420
+   ```
+4. 等待输出 `√ auto` 确认启动成功
+5. 若所有常见路径均未找到，请用户提供微信开发者工具安装路径
 
 **Step 3 — 运行诊断脚本**
 ```bash
@@ -78,9 +82,9 @@ cd E:\AI\wechatbot && node tests/diagnose.js
 
 ## CLI 启动自动化服务
 
+先自动查找 cli.bat（C: → D: → E: → F:），找到后启动：
 ```powershell
-# 必须用 cmd.exe /c 包装 .bat，直接 spawn 会报 EINVAL
-cmd.exe /c "E:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat" auto --project E:\AI\wechatbot --auto-port 9420
+cmd.exe /c "<cli.bat完整路径>" auto --project <项目路径> --auto-port 9420
 ```
 等待输出 `√ auto` 确认启动成功。
 
