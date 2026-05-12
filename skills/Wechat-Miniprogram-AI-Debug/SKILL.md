@@ -1,7 +1,7 @@
 ---
-name: Wechat-Miniprogram-AI-Debug
+name: wechat-miniprogram-ai-debug
 description: 微信小程序自动化测试 skill。当被加载时，必须实际运行 DevTools CLI + 执行 diagnose.js 脚本，不得仅输出文本方案。触发词：小程序/automator/DevTools/诊断。
-slug: Wechat-Miniprogram-AI-Debug
+slug: wechat-miniprogram-ai-debug
 license: MIT
 compatibility: opencode
 metadata:
