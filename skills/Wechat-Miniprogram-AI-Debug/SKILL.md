@@ -47,10 +47,10 @@ Get-Process -Name "wechatdevtools","微信开发者工具*" -ErrorAction Silentl
 5. 若所有常见路径均未找到，请用户提供微信开发者工具安装路径
 
 **Step 3 — 运行诊断脚本**
-```bash
-cd E:\AI\wechatbot && node tests/diagnose.js
+```powershell
+node <项目路径>\tests\diagnose.js
 ```
-如果 tests/diagnose.js 不存在，参照 templates/diagnose.js 模板用 Bash 工具创建。
+如果 `<项目路径>\tests\diagnose.js` 不存在，参照 templates/diagnose.js 模板创建。
 
 **Step 4 — 读取并分析结果**
 从测试输出中提取：
