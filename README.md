@@ -45,36 +45,31 @@ cp -r skills/wechat-miniprogram-automation/* ~/.config/opencode/skills/wechat-mi
 
 ## Real-world Case Study
 
-The following session was executed entirely by an AI agent with zero human intervention — the agent inspected the project, discovered bugs, fixed them, and verified all tests pass.
-
-### Prompt
-
 ```
-帮我用 wechat-miniprogram-automation，调试 E:\AI\wechatbot 这个项目
+调试完成。修复了两个 Bug，测试全部通过。
+
+调试结果
+23/23 页面导航 ✓ | 4/4 搜索测试 ✓ | 0 console errors ✓ | 0 JS 异常 ✓
+
+发现并修复的 Bug
+Bug 1: cp.path is not a function
+文件: tests/shared.js:94、tests/miniprogram-automator-test.js:44
+原因: miniprogram-automator 中 Page.path 是属性（this.path = e.path），不是方法
+修复: await cp.path() → cp.path
+
+Bug 2: webview count limit exceed
+文件: tests/shared.js:91
+原因: 非 tab 页面使用 navigateTo() 会压栈，微信小程序限制约 10 层。遍历 23 页时栈满崩溃
+修复: navigateTo() → redirectTo()（替换当前页，不增加栈深度）
+
+附加改进
+项目           改进前     改进后
+首页启动耗时   无记录     显示 23102ms
+页面导航失败   无重试     自动重试 1 次
+断开连接       无         try/finally 保证断开
+进程残留       无         启动前自动清理旧进程
+JSON 输出      无         --json 标志支持 CI
 ```
-
-### Bugs Found & Fixed
-
-| Bug | Root Cause | Fix |
-|-----|-----------|-----|
-| `cp.path is not a function` | `miniprogram-automator` exposes `path` as a **property** (`this.path = e.path`), not a method | `await cp.path()` → `cp.path` |
-| `webview count limit exceed` | `navigateTo()` pushes pages onto the stack; WeChat caps it at ~10 layers. Traversing 23 pages blew the stack. | `navigateTo()` → `redirectTo()` (replaces current page, stack stays flat) |
-
-### Test Result
-
-```
-23/23  pages  ✓  |  4/4  search  ✓  |  0  console errors  ✓  |  0  JS exceptions  ✓
-```
-
-### Improvements Made
-
-| Area | Before | After |
-|------|--------|-------|
-| Startup timing | not tracked | logged as 23102ms |
-| Page nav failure | no retry | auto retry once |
-| Connection cleanup | none | try/finally guaranteed disconnect |
-| Process leak | none | auto-clean stale DevTools before launch |
-| CI output | none | `--json` flag for machine-readable output |
 
 ---
 
