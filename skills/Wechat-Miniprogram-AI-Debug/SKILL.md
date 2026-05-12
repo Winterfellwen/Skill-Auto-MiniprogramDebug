@@ -37,14 +37,45 @@ Get-Process -Name "wechatdevtools","微信开发者工具*" -ErrorAction Silentl
 
 **Step 2 — 验证项目配置并启动 DevTools 自动化服务**
 
-1. **验证 app.json** — 读取 `<项目路径>/app.json`，检查是否有重复页面路径、格式错误。如有则先修复再继续
+1. **验证 app.json** — 读取 `<项目路径>/app.json`，检查每页的 `.wxml` 文件是否存在。用 PowerShell：
+   ```powershell
+   # 检查所有页面路径是否有对应 .wxml 文件
+   $json = Get-Content <项目路径>\app.json -Raw | ConvertFrom-Json
+   $allPages = @()
+   $json.pages | ForEach { $allPages += $_ }
+   $json.subpackages | ForEach { $_.pages | ForEach { $allPages += "$($_.root)/$_" } }
+   $allPages | Group-Object | Where-Object Count -gt 1 | ForEach { "重复: $($_.Name)" }
+   $allPages | ForEach { if (!(Test-Path "<项目路径>/$_.wxml")) { "缺失: $_.wxml" } }
+   ```
+   有重复或缺失则先修复再继续。
 2. **查找 cli.bat** — 检查默认路径 `C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat`，不存在则依次检查其他盘符（D:、E:、F: 等）
 3. **启动自动化服务** — 找到后：
    ```powershell
    cmd.exe /c "<完整路径>" auto --project <项目路径> --auto-port 9420
    ```
-4. **检查输出** — 等待输出 `√ auto` 确认成功；若输出包含 `error`/`错误`/`重复` 等关键词，说明项目配置有问题，先修复再重试
-5. 若所有常见路径均未找到，请用户提供微信开发者工具安装路径
+4. **连接后校验编译状态** — DevTools CLI 输出 `√ auto` 不代表编译成功。连接 automator 后必须验证：
+   ```javascript
+   // 用超时检测 currentPage —— 编译失败时 currentPage() 会无限挂起
+   const cp = await Promise.race([
+     miniProgram.currentPage(),
+     new Promise((_, reject) => setTimeout(() => reject(new Error('currentPage超时——项目编译可能失败')), 8000))
+   ]);
+   ```
+   如果 currentPage 超时，说明 app.json 等配置有编译错误。**不要盲目猜测**，直接查 DevTools 日志获取精确错误：
+   ```powershell
+   # 搜索 DevTools 日志中的 app.json 编译错误（自动遍历所有 profile）
+   Get-ChildItem "$env:USERPROFILE\AppData\Local\微信开发者工具\User Data\*\WeappLog\logs\*.log" -ErrorAction SilentlyContinue |
+     Sort-Object LastWriteTime -Descending |
+     Select-Object -First 5 |
+     ForEach-Object {
+       $content = Get-Content $_.FullName -Encoding UTF8
+       $content | Select-String "\[ERROR\]" | Where-Object { $_ -match "app\.json|appservice" } |
+         ForEach-Object { "  [$($_.Filename)] $($_.Line.Trim())" }
+     }
+   ```
+   - 根据日志提示精准修复
+   - 修复后重新从 Step 1 开始
+5. 若所有常见路径均未找到 cli.bat，请用户提供微信开发者工具安装路径
 
 **Step 3 — 运行诊断脚本**
 ```powershell
@@ -68,6 +99,7 @@ node <项目路径>\tests\diagnose.js
 2. **非 tab 页面用 `redirectTo` 不用 `navigateTo`** — 后者撑爆页面栈
 3. **`automator.on('console')` 捕获不全** — 框架级消息（`[system]`、`[Perf]`、`Error: timeout`）不可达
 4. **搜索测试加 `evaluate()` 回退** — 当 `page.$('input')` 找不到时，直接 setData
+5. **`switchTab`/`redirectTo` 必须加超时** — 这些方法可能无限挂起。用 `Promise.race` 包装，设置 15s 超时：`Promise.race([navigate(), timeoutPromise(15000)])`
 
 ## 当此 skill 应被加载
 
@@ -115,6 +147,7 @@ miniProgram.on('exception', err => { /* JS 异常 */ });
 - **console 捕获不全** — `[system]`、`[Perf]`、`Error: timeout` 不可达
 - **搜索 input 找不到时** — 用 `evaluate(() => { getCurrentPages().pop().setData({ searchKey: 'test' }) })` 回退
 - **`navigateTo` 撑爆页面栈** — 非 tab 页面优先用 `redirectTo`
+- **`switchTab`/`redirectTo` 可能无限挂起** — 必须用 `Promise.race` 加 15s 超时保护
 
 ## 诊断脚本
 
