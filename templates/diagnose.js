@@ -748,7 +748,8 @@ async function run() {
     console.log(mod.name + '\t' + resultStr + '\t' + moduleReason(key, r));
   }
 
-  const fixLog = autoFix();
+  const scanOnly = process.argv.includes('--scan-only');
+  const fixLog = scanOnly ? [] : autoFix();
 
   var fixByDesc = {};
   for (const f of fixLog) {

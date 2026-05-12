@@ -100,9 +100,19 @@ $allPages | ConvertTo-Json -Compress
 - **SCROLL_TESTS**：含 scroll-view 的页面
 - **DATA_CHECKS**：搜索页等有明确 data 字段的页面
 
+**Step 3.5 — 询问用户意图（默认）**
+
+如果用户没有明确说明只扫描还是修复，使用 `question` 工具让用户选择：
+```javascript
+// 选项：
+// "仅扫描问题（默认）" — 只运行诊断，不执行自动修复
+// "扫描并尝试修复" — 运行诊断 + 自动修复（建议按需使用）
+```
+将选择结果保存在变量 `MODE` 中。
+
 **Step 4 — 运行诊断脚本**
 ```powershell
-node <项目路径>\tests\diagnose.js
+node <项目路径>\tests\diagnose.js <% MODE === 'fix' ? '' : '--scan-only' %>
 ```
 
 **Step 5 — 读取并分析结果**
