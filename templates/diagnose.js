@@ -291,7 +291,7 @@ const FIX_RULES = [
   },
   {
     pattern: /console\.(log|info|debug)\(/g, replace: null,
-    description: '生产环境不应保留 console.log/info/debug，建议移除',
+    description: '生产构建前建议清理 console.log 等调试语句',
     exclude: file => isThirdParty(file) || file.includes('mock') || file.includes('quick-test'),
   },
   {
@@ -556,18 +556,15 @@ function generateReport(runResult, fixLog) {
   fs.writeFileSync(REPORT_PATH, json, 'utf-8');
 
   const textLines = [];
-  textLines.push('='.repeat(60));
-  textLines.push('  微信小程序自动化诊断报告');
-  textLines.push('='.repeat(60));
-  textLines.push('生成时间: ' + report.time);
+  textLines.push('诊断报告总结');
+  textLines.push('指标\t结果');
+  textLines.push('页面导航\t' + report.summary.pagesSuccess + '/' + (report.summary.pagesSuccess + report.summary.pagesFail) + ' ' + (report.summary.pagesFail > 0 ? '\u2717' : '\u2713') + ' ' + (report.summary.pagesFail > 0 ? '部分页面导航失败' : '全部成功'));
+  textLines.push('搜索测试\t' + report.summary.searchSuccess + '/' + (report.summary.searchSuccess + report.summary.searchFail) + ' ' + (report.summary.searchFail > 0 ? '\u2717' : '\u2713') + ' ' + (report.summary.searchFail > 0 ? '搜索异常' : '输入框正常工作'));
+  var tc = report.summary.totalEntries, ec = report.summary.errors, wc = report.summary.warnings;
+  textLines.push('Console 日志\t' + tc + (wc > 0 ? '条警告' : '') + (ec > 0 && wc > 0 ? '，' : '') + (ec > 0 ? ec + '条错误' : (ec === 0 && wc === 0 ? '无异常' : '')));
   textLines.push('');
-  textLines.push('── 概要 ──');
-  textLines.push('页面导航\t' + report.summary.pagesSuccess + '/' + (report.summary.pagesSuccess + report.summary.pagesFail) + ' ' + (report.summary.pagesFail > 0 ? '\u2717' : '\u2713') + '\t' + (report.summary.pagesFail > 0 ? '部分页面导航失败' : '全部成功'));
-  textLines.push('搜索测试\t' + report.summary.searchSuccess + '/' + (report.summary.searchSuccess + report.summary.searchFail) + ' ' + (report.summary.searchFail > 0 ? '\u2717' : '\u2713') + '\t' + (report.summary.searchFail > 0 ? '搜索异常' : '输入框正常工作'));
-  textLines.push('Console 日志\t' + report.summary.totalEntries + ' 条\tError: ' + report.summary.errors + ', Warning: ' + report.summary.warnings);
-  textLines.push('');
-  textLines.push('── 增强测试模块结果 ──');
-  textLines.push('模块名称\t结果\t原因');
+  textLines.push('增强测试模块结果');
+  textLines.push('模块\t结果\t原因');
   for (const [key, info] of Object.entries(report.summary.testModules)) {
     const total = info.passed + info.failed;
     const icon = info.failed > 0 ? '\u2717' : '\u2713';
@@ -575,36 +572,22 @@ function generateReport(runResult, fixLog) {
     textLines.push(info.name + '\t' + resultStr + '\t' + moduleReason(key, info));
   }
   textLines.push('');
-  textLines.push('── 噪音类 ──');
+  textLines.push('分类统计');
   for (const n of report.noiseSummary) {
-    textLines.push('  [' + n.category + '] ' + n.count + ' 条');
-    textLines.push('    说明: ' + n.explanation);
-    for (const ex of n.examples) textLines.push('    示例: ' + ex);
+    textLines.push('[噪音] ' + n.category + ' (' + n.count + '条) — ' + n.explanation);
+  }
+  var fixByDesc = {};
+  for (const f of fixLog) {
+    if (f.action === '建议') {
+      if (!fixByDesc[f.description]) fixByDesc[f.description] = [];
+      fixByDesc[f.description].push(f.file);
+    }
+  }
+  for (const [desc, files] of Object.entries(fixByDesc)) {
+    textLines.push('[建议] ' + desc + '：' + files.join(', '));
   }
   textLines.push('');
-  textLines.push('── 可修复类 ──');
-  for (const [cat, info] of Object.entries(runResult.categories)) {
-    if (info.severity !== 'fixable') continue;
-    textLines.push('  [' + cat + '] ' + info.count + ' 条');
-    textLines.push('    说明: ' + info.explanation);
-    for (const ex of info.examples) textLines.push('    示例: ' + ex);
-  }
-  textLines.push('');
-  textLines.push('── 自动修复操作 ──');
-  if (fixLog.length === 0) textLines.push('  无需修复');
-  else for (const f of fixLog) {
-    if (f.action === '跳过') textLines.push('  ' + f.description);
-    else textLines.push('  [' + f.action + '] ' + f.file + ' (' + f.matchCount + '处)\n    ' + f.description);
-  }
-  textLines.push('');
-  textLines.push('── 页面详情 ──');
-  for (const pd of runResult.pageDetails) textLines.push('  ' + pd.name + ' (' + pd.path + ') \u2192 ' + pd.status);
-  textLines.push('');
-  textLines.push('注意: 本报告基于 automator.on(\'console\') 捕获，仅包含 JS 运行时层输出。');
-  textLines.push('渲染层错误（WXML/WXSS/数据绑定异常）属框架内部消息，无法自动化获取。');
-  textLines.push('本报告已覆盖: JS 运行时错误/警告、页面路由、搜索交互、');
-  textLines.push('元素存在性、按钮跳转、TabBar、表单输入、数据校验、滚动测试。');
-  textLines.push('='.repeat(60));
+  textLines.push('注意: Console 日志仅包含 JS 运行时层输出。渲染层错误（WXML/WXSS/数据绑定异常）属于框架内部消息，无法通过自动化手段获取。');
 
   const reportText = textLines.join('\n');
   const textReportPath = path.join(__dirname, 'diagnose-report.txt');
@@ -743,8 +726,19 @@ async function run() {
   }
 
   // 打印模块摘要
-  console.log('\n── 增强测试模块结果 ──');
-  console.log('模块名称\t结果\t原因');
+  var errCount = allConsole.filter(function(m) { return m.type === 'error' || m.type === 'assert'; }).length;
+  var warnCount = allConsole.filter(function(m) { return m.type === 'warn'; }).length;
+  var totalPages = pagePassed + pageFailed;
+  var totalSearch = searchPassed + searchFailed;
+
+  console.log('\n诊断报告总结');
+  console.log('指标\t结果');
+  console.log('页面导航\t' + pagePassed + '/' + totalPages + ' ' + (pageFailed > 0 ? '\u2717' : '\u2713') + ' ' + (pageFailed > 0 ? '部分页面导航失败' : '全部成功'));
+  console.log('搜索测试\t' + searchPassed + '/' + totalSearch + ' ' + (searchFailed > 0 ? '\u2717' : '\u2713') + ' ' + (searchFailed > 0 ? '搜索异常' : '输入框正常工作'));
+  console.log('Console 日志\t' + (errCount + warnCount) + (warnCount > 0 ? '条警告' : '') + (errCount > 0 && warnCount > 0 ? '，' : '') + (errCount > 0 ? errCount + '条错误' : (errCount === 0 && warnCount === 0 ? '无异常' : '')));
+
+  console.log('\n增强测试模块结果');
+  console.log('模块\t结果\t原因');
   for (const [key, mod] of Object.entries(MODULES)) {
     if (!mod.enabled) continue;
     const r = moduleResults[key];
@@ -754,26 +748,35 @@ async function run() {
     console.log(mod.name + '\t' + resultStr + '\t' + moduleReason(key, r));
   }
 
-  // 自动修复
-  console.log('\n[修复] 扫描可修复问题...');
   const fixLog = autoFix();
+
+  var fixByDesc = {};
   for (const f of fixLog) {
-    if (f.action === '建议') console.log('  [建议] ' + (f.file || '') + ' - ' + f.description);
-    else if (f.action === '已修复') console.log('  [已修复] ' + f.file + ' - ' + f.description);
-    else console.log('  ' + f.description);
+    if (f.action === '建议') {
+      if (!fixByDesc[f.description]) fixByDesc[f.description] = [];
+      fixByDesc[f.description].push(f.file);
+    }
+  }
+  var hasFix = Object.keys(fixByDesc).length > 0 || Object.keys(categories).length > 0;
+  if (hasFix) {
+    console.log('\n分类统计');
+    for (const [cat, info] of Object.entries(categories)) {
+      if (info.severity === 'noise') {
+        console.log('[噪音] ' + cat + ' (' + info.count + '条) — ' + info.explanation);
+      }
+    }
+    for (const [desc, files] of Object.entries(fixByDesc)) {
+      console.log('[建议] ' + desc + '：' + files.join(', '));
+    }
   }
 
-  // 报告
   const runResult = { pagePassed, pageFailed, searchPassed, searchFailed, entries, errors, warnings, exceptions: allExceptions, categories, pageDetails, moduleDetails, moduleResults };
   console.log('\n[报告] 生成诊断报告...');
   const { reportText, textReportPath } = generateReport(runResult, fixLog);
-  console.log('  \u2713 报告已保存: ' + REPORT_PATH);
   console.log('  \u2713 报告已保存: ' + textReportPath);
 
-  console.log('');
-  console.log(reportText);
   miniProgram.disconnect();
-  console.log('\n\u2713 诊断完成');
+  console.log('\nDevTools 已打开，你可以查看模拟器状态和 Console 面板。');
 }
 
 run().catch(err => { console.error('\n诊断脚本异常:', err.message); process.exit(1); });
