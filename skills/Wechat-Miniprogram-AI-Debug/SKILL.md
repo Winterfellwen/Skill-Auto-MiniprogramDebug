@@ -61,20 +61,15 @@ Get-Process -Name "wechatdevtools","微信开发者工具*" -ErrorAction Silentl
      new Promise((_, reject) => setTimeout(() => reject(new Error('currentPage超时——项目编译可能失败')), 8000))
    ]);
    ```
-   如果 currentPage 超时，说明 app.json 等配置有编译错误。**不要盲目猜测**，直接查 DevTools 日志获取精确错误：
+   如果 currentPage 超时，说明项目有编译错误。先跑个页面导航试试，确认失败后再查 DevTools 日志（只看当前会话最新日志，避免历史干扰）：
    ```powershell
-   # 搜索 DevTools 日志中的 app.json 编译错误（自动遍历所有 profile）
    Get-ChildItem "$env:USERPROFILE\AppData\Local\微信开发者工具\User Data\*\WeappLog\logs\*.log" -ErrorAction SilentlyContinue |
-     Sort-Object LastWriteTime -Descending |
-     Select-Object -First 5 |
-     ForEach-Object {
-       $content = Get-Content $_.FullName -Encoding UTF8
-       $content | Select-String "\[ERROR\]" | Where-Object { $_ -match "app\.json|appservice" } |
-         ForEach-Object { "  [$($_.Filename)] $($_.Line.Trim())" }
-     }
+     Sort-Object LastWriteTime -Descending | Select-Object -First 1 |
+     ForEach-Object { Get-Content $_.FullName -Encoding UTF8 |
+       Select-String "\[ERROR\]" | Where-Object { $_ -match "app\.json|appservice" } |
+       ForEach-Object { $_.Line.Trim() } }
    ```
-   - 根据日志提示精准修复
-   - 修复后重新从 Step 1 开始
+   根据日志提示修复后重新从 Step 1 开始
 5. 若所有常见路径均未找到 cli.bat，请用户提供微信开发者工具安装路径
 
 **Step 3 — 运行诊断脚本**
