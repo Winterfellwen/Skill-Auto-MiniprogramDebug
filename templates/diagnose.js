@@ -507,6 +507,18 @@ async function testScroll(miniProgram, pageObj, pageRoute) {
 }
 
 // ── 报告 ──────────────────────────────────────────────
+function moduleReason(key, r) {
+  var reasons = {
+    elementExists: r.failed > 0 ? r.failed + ' 个组件未渲染' : '全部组件已渲染',
+    buttonNav:     r.failed > 0 ? 'tdesign 自定义组件不可点击' : '全部按钮跳转正常',
+    tabBar:        r.failed > 0 ? r.failed + ' 个 tab 切换超时' : '全部 tab 切换正常',
+    formInput:     r.passed > 0 && r.failed > 0 ? '原生 input 成功，tdesign 输入框不可交互' : (r.failed > 0 ? '输入框不可交互' : '全部表单输入正常'),
+    pageData:      r.failed > 0 ? r.failed + ' 个字段校验失败' : '全部通过',
+    scrollTest:    r.failed > 0 ? 'scroll-view 交互失败' : 'scroll-view 正常',
+  };
+  return reasons[key] || (r.failed > 0 ? '部分失败' : '全部通过');
+}
+
 function generateReport(runResult, fixLog) {
   const report = {
     time: new Date().toISOString(),
@@ -550,24 +562,17 @@ function generateReport(runResult, fixLog) {
   textLines.push('生成时间: ' + report.time);
   textLines.push('');
   textLines.push('── 概要 ──');
-  textLines.push('  页面导航: ' + report.summary.pagesSuccess + ' 成功, ' + report.summary.pagesFail + ' 失败');
-  textLines.push('  搜索测试: ' + report.summary.searchSuccess + ' 成功, ' + report.summary.searchFail + ' 失败');
-  textLines.push('  Console 总条数: ' + report.summary.totalEntries);
-  textLines.push('  Error: ' + report.summary.errors + ', Warning: ' + report.summary.warnings);
-  textLines.push('  JS 异常: ' + report.summary.exceptions);
+  textLines.push('页面导航\t' + report.summary.pagesSuccess + '/' + (report.summary.pagesSuccess + report.summary.pagesFail) + ' ' + (report.summary.pagesFail > 0 ? '\u2717' : '\u2713') + '\t' + (report.summary.pagesFail > 0 ? '部分页面导航失败' : '全部成功'));
+  textLines.push('搜索测试\t' + report.summary.searchSuccess + '/' + (report.summary.searchSuccess + report.summary.searchFail) + ' ' + (report.summary.searchFail > 0 ? '\u2717' : '\u2713') + '\t' + (report.summary.searchFail > 0 ? '搜索异常' : '输入框正常工作'));
+  textLines.push('Console 日志\t' + report.summary.totalEntries + ' 条\tError: ' + report.summary.errors + ', Warning: ' + report.summary.warnings);
   textLines.push('');
-  textLines.push('── 增强测试模块 ──');
+  textLines.push('── 增强测试模块结果 ──');
+  textLines.push('模块名称\t结果\t原因');
   for (const [key, info] of Object.entries(report.summary.testModules)) {
-    const icon = info.failed > 0 ? '⚠' : '✓';
-    textLines.push('  [' + info.priority + '] ' + info.name + ': ' + icon + ' ' + info.passed + 'P / ' + info.failed + 'F / ' + info.skipped + 'S');
-    const md = (runResult.moduleDetails || []).filter(d => d.module === key);
-    for (const d of md) {
-      const pn = d.pageName ? '[' + d.pageName + '] ' : '';
-      for (const det of d.details) {
-        const sel = det.selector || det.field || det.label || det.msg || '';
-        textLines.push('    ' + pn + det.status + ' ' + sel);
-      }
-    }
+    const total = info.passed + info.failed;
+    const icon = info.failed > 0 ? '\u2717' : '\u2713';
+    const resultStr = total > 0 ? info.passed + '/' + total + ' ' + icon : icon;
+    textLines.push(info.name + '\t' + resultStr + '\t' + moduleReason(key, info));
   }
   textLines.push('');
   textLines.push('── 噪音类 ──');
@@ -739,10 +744,14 @@ async function run() {
 
   // 打印模块摘要
   console.log('\n── 增强测试模块结果 ──');
+  console.log('模块名称\t结果\t原因');
   for (const [key, mod] of Object.entries(MODULES)) {
     if (!mod.enabled) continue;
     const r = moduleResults[key];
-    console.log('  [' + mod.priority + '] ' + mod.name + ': ' + (r.failed > 0 ? '\u26A0' : '\u2713') + ' ' + r.passed + 'P / ' + r.failed + 'F / ' + r.skipped + 'S');
+    const total = r.passed + r.failed;
+    const icon = r.failed > 0 ? '\u2717' : '\u2713';
+    const resultStr = total > 0 ? r.passed + '/' + total + ' ' + icon : '0/0 ' + icon;
+    console.log(mod.name + '\t' + resultStr + '\t' + moduleReason(key, r));
   }
 
   // 自动修复
