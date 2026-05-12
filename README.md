@@ -1,23 +1,43 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
-  <img src="https://img.shields.io/badge/node-%3E%3D18-339933" alt="Node 18+">
-  <img src="https://img.shields.io/badge/OpenCode-compatible-6366f1" alt="OpenCode">
-  <img src="https://img.shields.io/badge/Claude%20Code-compatible-6366f1" alt="Claude Code">
-  <img src="https://img.shields.io/badge/Platform-Win-0078D4" alt="Windows">
+  <a href="https://github.com/Winterfellwen/Wechat-Miniprogram-AI-Debug"><img src="https://img.shields.io/github/v/release/Winterfellwen/Wechat-Miniprogram-AI-Debug?style=for-the-badge&color=blue" alt="GitHub Release"></a>
+  <img src="https://img.shields.io/badge/WeChat_Miniprogram-07C160?style=for-the-badge&logo=wechat&logoColor=white" alt="WeChat Miniprogram">
+  <img src="https://img.shields.io/badge/node-%3E%3D18-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node 18+">
+  <a href="https://github.com/Winterfellwen/Wechat-Miniprogram-AI-Debug/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Winterfellwen/Wechat-Miniprogram-AI-Debug?style=for-the-badge&color=green" alt="License"></a>
 </p>
 
-<h1 align="center">WeChat Miniprogram Automation</h1>
+<p align="center">
+  <a href="https://github.com/Winterfellwen/Wechat-Miniprogram-AI-Debug/stargazers"><img src="https://img.shields.io/github/stars/Winterfellwen/Wechat-Miniprogram-AI-Debug?style=flat-square&logo=github" alt="GitHub stars"></a>
+  <img src="https://img.shields.io/badge/OpenCode-compatible-6366f1?style=flat-square" alt="OpenCode">
+  <img src="https://img.shields.io/badge/Claude%20Code-compatible-6366f1?style=flat-square" alt="Claude Code">
+  <img src="https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square" alt="Windows">
+</p>
+
+<h1 align="center">WeChat Miniprogram Auto Debug</h1>
 
 <p align="center">
   AI-driven automated testing skill for WeChat Mini Programs.<br>
-  Leverages <code>miniprogram-automator</code> to run DevTools CLI, traverse pages, test search interactions, and capture console/exception output — all autonomously via OpenCode or Claude Code.
+  Leverages <code>miniprogram-automator</code> to drive DevTools CLI — traverse pages, test search interactions, click buttons, and capture console/exception output — all autonomously via OpenCode or Claude Code.
 </p>
 
 ---
 
-## Install
+## What This Skill Does
 
-Place `wechat-miniprogram-automation/` into one of these paths:
+This skill provides an AI agent with the ability to **autonomously test and debug** a WeChat Mini Program project using `miniprogram-automator`. When invoked, the agent will:
+
+1. Launch the WeChat DevTools automation service
+2. Connect via WebSocket
+3. Traverse all registered page routes
+4. Test search input interactions
+5. Click buttons and verify UI state
+6. Capture console errors and JS exceptions
+7. Report a structured diagnosis summary
+
+The skill encodes hard-learned lessons from real-world debugging — including workarounds for `.bat` spawn EINVAL, page stack overflow limits, and API gaps in `miniprogram-automator`.
+
+## Installation
+
+Place `Wechat-Miniprogram-Auto-Debug/` into one of these paths:
 
 | Path | Scope |
 |------|-------|
@@ -28,10 +48,30 @@ Place `wechat-miniprogram-automation/` into one of these paths:
 | `.agents/skills/<name>/` | Project (Agent) |
 | `~/.agents/skills/<name>/` | Global (Agent) |
 
+### Quick Install
+
 ```bash
 # global install
-mkdir -p ~/.config/opencode/skills/wechat-miniprogram-automation
-cp -r skills/wechat-miniprogram-automation/* ~/.config/opencode/skills/wechat-miniprogram-automation/
+mkdir -p ~/.config/opencode/skills/Wechat-Miniprogram-Auto-Debug
+cp -r skills/Wechat-Miniprogram-Auto-Debug/* ~/.config/opencode/skills/Wechat-Miniprogram-Auto-Debug/
+```
+
+## Usage
+
+### Slash Command
+
+```
+/Wechat-Miniprogram-Auto-Debug [custom instructions]
+```
+
+### Prompts
+
+```
+帮我调试 E:\AI\wechatbot 这个项目
+
+用 automator 测试 all pages
+
+帮我测试 pdf 转换功能
 ```
 
 ## Contents
@@ -44,6 +84,10 @@ cp -r skills/wechat-miniprogram-automation/* ~/.config/opencode/skills/wechat-mi
 ---
 
 ## Real-world Case Study
+
+The following session was executed entirely by an AI agent with zero human intervention — the agent inspected the project, discovered bugs, fixed them, and verified all tests pass.
+
+### Result
 
 ```
 调试完成。修复了两个 Bug，测试全部通过。

@@ -1,12 +1,19 @@
 ---
-name: wechat-miniprogram-automation
+name: Wechat-Miniprogram-Auto-Debug
 description: 微信小程序自动化测试 skill。当被加载时，必须实际运行 DevTools CLI + 执行 diagnose.js 脚本，不得仅输出文本方案。触发词：小程序/automator/DevTools/诊断。
+slug: Wechat-Miniprogram-Auto-Debug
 license: MIT
 compatibility: opencode
 metadata:
   platform: windows
   tooling: miniprogram-automator
 ---
+
+# Invocation
+
+```
+/Wechat-Miniprogram-Auto-Debug [自定义指令]
+```
 
 # EXECUTION RULES — 必须遵守，违反即错误
 
@@ -61,10 +68,11 @@ cd E:\AI\wechatbot && node tests/diagnose.js
 ## 当此 skill 应被加载
 
 用户提到以下内容时你必须加载此 skill：
+- 使用 `/Wechat-Miniprogram-Auto-Debug` 命令
 - 微信小程序 / WeChat / miniprogram 相关的测试、诊断、优化
 - 涉及 `E:\AI\wechatbot` 项目的自动化或调试
 - 关键词：automator / DevTools / CLI / diagnose / 页面路由 / 搜索测试
-- 用户明确说 "用 wechat-miniprogram-automation"
+- 用户明确说 "用 Wechat-Miniprogram-Auto-Debug"
 
 ---
 
@@ -107,4 +115,5 @@ miniProgram.on('exception', err => { /* JS 异常 */ });
 ## 诊断脚本
 
 `tests/diagnose.js` — 自动启动 CLI → 遍历 26 页面 → 搜索测试 → console 捕获 → 报告
+`tests/diagnose-full.js` — 全功能测试（含按钮交互、PDF 转换模拟、30 页面验证）
 `templates/diagnose.js` — 备用模板 (同目录)
