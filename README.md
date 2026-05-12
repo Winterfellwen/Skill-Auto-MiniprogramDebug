@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square" alt="Windows">
 </p>
 
-<h1 align="center">WeChat Miniprogram Auto Debug</h1>
+<h1 align="center">WeChat Miniprogram AI Debug</h1>
 
 <p align="center">
   AI-driven automated testing skill for WeChat Mini Programs.<br>
@@ -37,7 +37,7 @@ The skill encodes hard-learned lessons from real-world debugging — including w
 
 ## Installation
 
-Place `Wechat-Miniprogram-Auto-Debug/` into one of these paths:
+Place `Wechat-Miniprogram-AI-Debug/` into one of these paths:
 
 | Path | Scope |
 |------|-------|
@@ -52,8 +52,8 @@ Place `Wechat-Miniprogram-Auto-Debug/` into one of these paths:
 
 ```bash
 # global install
-mkdir -p ~/.config/opencode/skills/Wechat-Miniprogram-Auto-Debug
-cp -r skills/Wechat-Miniprogram-Auto-Debug/* ~/.config/opencode/skills/Wechat-Miniprogram-Auto-Debug/
+mkdir -p ~/.config/opencode/skills/Wechat-Miniprogram-AI-Debug
+cp -r skills/Wechat-Miniprogram-AI-Debug/* ~/.config/opencode/skills/Wechat-Miniprogram-AI-Debug/
 ```
 
 ## Usage
@@ -61,7 +61,7 @@ cp -r skills/Wechat-Miniprogram-Auto-Debug/* ~/.config/opencode/skills/Wechat-Mi
 ### Slash Command
 
 ```
-/Wechat-Miniprogram-Auto-Debug [custom instructions]
+/Wechat-Miniprogram-AI-Debug [custom instructions]
 ```
 
 ### Prompts
