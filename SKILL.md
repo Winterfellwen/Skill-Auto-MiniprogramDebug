@@ -3,10 +3,22 @@ name: wechat-miniprogram-ai-debug
 description: 微信小程序自动化测试 skill。当被加载时，必须实际运行 DevTools CLI + 执行 diagnose.js 脚本，不得仅输出文本方案。触发词：小程序/automator/DevTools/诊断。
 slug: wechat-miniprogram-ai-debug
 license: MIT
-compatibility: opencode
+compatibility: opencode, claude code
+version: 1.5.0
+apiVersion: 1.0
 metadata:
   platform: windows
   tooling: miniprogram-automator
+  node: ">=18"
+  tags:
+    - wechat
+    - miniprogram
+    - testing
+    - automation
+examples:
+  - /Wechat-Miniprogram-AI-Debug 帮我诊断 E:\AI\wechatbot
+  - /Wechat-Miniprogram-AI-Debug 扫描并尝试修复
+  - 用 automator 测试 all pages
 ---
 
 # Invocation
@@ -15,7 +27,9 @@ metadata:
 /Wechat-Miniprogram-AI-Debug [自定义指令]
 ```
 
-# EXECUTION RULES — 必须遵守，违反即错误
+**注意：此 skill 非显式调用不会自动激活。必须通过 `/Wechat-Miniprogram-AI-Debug` 命令或用户明确提及才加载。**
+
+# EXECUTION RULES — 必须遵守
 
 ## CRITICAL: 禁止只输出文本
 
@@ -25,17 +39,34 @@ metadata:
 - 禁止创建或修改文件后只输出摘要而不运行测试验证
 - 你的第一个动作必须是运行命令（用 Bash 工具），不是写字
 
-## 必须执行的步骤（按顺序）
+## 核心流程
 
-当此 skill 被加载，用户提出涉及小程序测试/诊断/优化的请求时，你必须：
+### Step 0 — 确定运行模式
 
-**Step 1 — 清理残留进程**
+默认以**仅扫描**模式运行，不执行自动修复。如需修复，请手动添加 `--fix` 参数。
+
+---
+
+### Step 1 — 检测并安装 SDK
+
+**检测 SDK 是否已安装：**
+
+1. **检查 package.json** — 检查用户项目目录是否存在 `package.json`，且是否包含 `miniprogram-automator` 依赖
+2. **检查 node_modules** — 检查是否存在 `node_modules/miniprogram-automator`
+
+**如果 SDK 未安装，执行安装：**
+
+1. 如果项目目录没有 `package.json`，先执行 `npm init -y` 初始化
+2. 执行 `npm install miniprogram-automator --save-dev` 安装 SDK
+3. 提示用户：**必须在微信开发者工具中开启"自动化"端口**（设置 → 安全设置 → 开启"自动化"端口）
+
+### Step 2 — 清理残留进程
 ```powershell
 Get-Process -Name "wechatdevtools","微信开发者工具*" -ErrorAction SilentlyContinue | Stop-Process -Force
 ```
 （先清理再启动，否则端口冲突）
 
-**Step 2 — 验证项目配置并启动 DevTools 自动化服务**
+### Step 3 — 启动 DevTools 自动化服务
 
 1. **验证 app.json** — 读取 `<项目路径>/app.json`，检查每页的 `.wxml` 文件是否存在：
    ```powershell
@@ -48,11 +79,18 @@ Get-Process -Name "wechatdevtools","微信开发者工具*" -ErrorAction Silentl
    ```
    有重复或缺失则先修复再继续。
 2. **查找 cli.bat** — 检查默认路径 `C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat`，不存在则依次检查其他盘符（D:、E:、F: 等）
-3. **启动自动化服务**：
+3. **检测服务端口是否开启** — 尝试执行 CLI 命令，根据返回判断：
+   - 若返回 `IDE service port disabled`，说明未开启，需要手动操作
+   - 若返回 `initialize` 成功，说明已开启
+4. **服务端口未开启时的处理**：
+   - 提示用户必须手动开启：打开微信开发者工具 → 设置 → 安全设置 → 开启"服务端口"/"自动化"端口
+   - 用户确认开启后，重新执行 CLI 命令
+5. **启动服务**：
    ```powershell
-   cmd.exe /c "<完整路径>" auto --project <项目路径> --auto-port 9420
+   cmd.exe /c "<cli.bat完整路径>" auto --project <项目路径> --auto-port 9420
    ```
-4. **连接后校验编译状态** — DevTools CLI 输出 `√ auto` 不代表编译成功。连接 automator 后必须验证：
+   等待输出 `√ auto` 确认启动成功。若输出包含 `error`/`错误`，先修复项目配置再重试。
+6. **连接后校验编译状态** — DevTools CLI 输出 `√ auto` 不代表编译成功。连接 automator 后必须验证：
    ```javascript
    const cp = await Promise.race([
      miniProgram.currentPage(),
@@ -67,19 +105,17 @@ Get-Process -Name "wechatdevtools","微信开发者工具*" -ErrorAction Silentl
        Select-String "\[ERROR\]" | Where-Object { $_ -match "app\.json|appservice" } |
        ForEach-Object { $_.Line.Trim() } }
    ```
-   根据日志提示修复后重新从 Step 1 开始
-5. 若所有常见路径均未找到 cli.bat，请用户提供微信开发者工具安装路径
+   根据日志提示修复后重新从 Step 2 开始。
+7. 若所有常见路径均未找到 cli.bat，请用户提供微信开发者工具安装路径
 
-**Step 3 — 生成诊断脚本（始终重新生成）**
+> **注意**：微信开发者工具的服务端口（CLI/HTTP 调用功能）出于安全考虑必须手动确认开启，无法通过配置文件自动开启。首次开启后，后续使用无需再次确认。
 
-无论 `<项目路径>\tests\diagnose.js` 是否存在，都必须重新生成。
+### Step 4 — 生成诊断脚本（始终重新生成）
+
+**无论 `tests/diagnose.js` 是否存在，都必须重新生成。**
 
 ```powershell
-# 1. 读取 app.json 获取所有页面
-# 2. 扫描每个页面的 .wxml 获取组件和事件绑定
-# 3. 生成 tests/diagnose.js
-
-# 读取页面
+# 读取 app.json 获取所有页面，检测 tabBar 标记
 $json = Get-Content <项目路径>\app.json -Raw | ConvertFrom-Json
 $allPages = @()
 $json.pages | ForEach { $allPages += @{ path = $_; tab = $false } }
@@ -100,167 +136,157 @@ $allPages | ConvertTo-Json -Compress
 - **SCROLL_TESTS**：含 scroll-view 的页面
 - **DATA_CHECKS**：搜索页等有明确 data 字段的页面
 
-**Step 3.5 — 询问用户意图（默认）**
+### Step 5 — 运行诊断（默认扫描模式）
 
-如果用户没有明确说明只扫描还是修复，调用 `question` 工具弹框让用户选择：
+**如果用户没有明确说明要修复，则默认只扫描，不自动修复。**
 
-```
-questions: [{
-  question: "你想先扫描问题，还是扫描并尝试自动修复？",
-  header: "诊断模式",
-  options: [
-    { label: "仅扫描问题（默认）", description: "只运行诊断，不执行自动修复" },
-    { label: "扫描并尝试修复", description: "运行诊断 + 自动修复（建议按需使用）" },
-  ]
-}]
-```
-
-根据用户选择决定后续是否传 `--scan-only`。
-
-**Step 4 — 运行诊断脚本**
 ```powershell
-node <项目路径>\tests\diagnose.js <% MODE === 'fix' ? '' : '--scan-only' %>
+# 扫描模式（默认）
+node <项目路径>\tests\diagnose.js --project <项目路径> --cli <cli路径> --port 9420 --scan-only
 ```
 
-**Step 5 — 读取并分析结果**
-从测试输出中提取：
+### Step 6 — 分析与分类
+
+从测试输出提取：
 - 页面通过数 / 失败数
-- 6 个测试模块各自的 passed / failed / skipped
+- 测试模块各自的 passed / failed / skipped
 - console errors + warnings + JS 异常
-- **分类分析** — 按 `[噪音]/[修复]/[待判断]` 标签区分：
 
-  | 严重度 | 含义 | 处理方式 |
-  |--------|------|----------|
-  | `[噪音]` | 组件属性类型不匹配、框架内部警告等 | 不修代码，记入最终报告并解释原因 |
-  | `[修复]` | 引用错误、资源加载失败、脚本异常、已废弃 API | 修改对应文件后回到 Step 1 重试 |
-  | `[待判断]` | 不在已知分类中的 error/warning | 分析源码后决定是否修复 |
+按严重度分类：
+| 严重度 | 含义 | 处理 |
+|--------|------|------|
+| `[噪音]` | 组件属性类型不匹配、框架内部警告等 | 不修代码，记入报告 |
+| `[修复]` | 引用错误、资源加载失败、脚本异常 | 记录修复方案 |
+| `[待判断]` | 不在已知分类的 error/warning | 分析源码后决定 |
 
-**Step 6 — 修复与报告**
-1. 对于 `[修复]` 类：修改对应文件后回到 Step 1 重试
-2. 对于 `[噪音]` 类：不修改代码，在最终报告中归类说明原因
-3. 最终报告包含：页面结果、6 个测试模块结果、errors/warnings 分类统计、各噪音项的简要解释
+### Step 7 — 输出修复方案或执行修复
 
-**Step 7 — 断开连接 + 打开 DevTools 供用户查看**
+**用户未明确要求修复时（默认）：**
+- 生成修复方案文档 `diagnose-fix-suggestions.txt`
+- 方案必须包含：**具体文件路径 + 具体行号 + 具体修改内容**
+- 格式示例：
+  ```
+  文件: pages/home/index.js
+  行号: 15
+  当前: wx.getUserInfo({
+  建议: wx.getUserProfile({
+  原因: wx.getUserInfo 已废弃
+  ```
+- 告知用户方案位置
+
+**用户明确要求修复时：**
+- 执行自动修复
+- 生成修复记录文档 `diagnose-fix-log.txt`
+- 记录必须包含：**文件路径 + 行号 + 操作类型（增加/删除/修改） + 具体内容**
+- 格式示例：
+  ```
+  文件: pages/home/index.js
+  行号: 15
+  操作: 修改
+  之前: wx.getUserInfo({
+  之后: wx.getUserProfile({
+  ```
+- 告知用户记录位置，便于 AI 回滚
+
+### Step 8 — 断开连接 + 打开 DevTools 供用户查看
+
 ```javascript
 miniProgram.disconnect();
 ```
+
 诊断完成后，保持 DevTools 运行并打开其窗口，让用户能直观看到模拟器状态、Console 面板等：
 ```powershell
 cmd.exe /c "<CLI_PATH>" open --project <项目路径>
 ```
 然后打印提示告知用户可以查看效果了。
 
-注意：不要调用 `Stop-Process` 杀掉 DevTools。保持 DevTools 运行，用户会自行关闭。
+**注意：不要 Stop-Process 杀掉 DevTools，保持运行供用户查看。**
 
 ---
 
-## 诊断脚本结构（6 个测试模块）
+## 诊断脚本结构（8 个模块）
 
-`tests/diagnose.js` 包含以下模块，按优先级排列：
+| 模块 | 说明 |
+|------|------|
+| 页面遍历 | 遍历所有页面，验证导航正常 |
+| 搜索功能 | 测试搜索框输入是否正常绑定 data |
+| 元素存在性检查 | 验证核心组件已渲染 |
+| 按钮交互与跳转 | 点击按钮，验证目标页面 |
+| TabBar 切换 | 遍历所有 tab 页 |
+| 表单输入 | input/textarea 输入 |
+| 页面数据校验 | 检查 data 字段类型 |
+| 滚动/下拉刷新 | 模拟 touch 手势 |
 
-| 优先级 | 模块 | 说明 | 实现方式 |
-|--------|------|------|----------|
-| P0 | 元素存在性检查 | 验证页面核心组件已渲染 | `page.$(selector)` + 3s 超时 |
-| P0 | 按钮交互与跳转 | 点击按钮，验证目标页面到达 | `element.tap()` + `currentPage()` |
-| P0 | TabBar 切换 | 遍历所有 tab 页面，验证切换正常 | `switchTab()` + 元素校验 |
-| P1 | 表单输入 | input/t-input/textarea 输入文本 | `element.input(value)` |
-| P1 | 页面数据校验 | 检查页面 data 字段类型和值 | `page.data(path)` |
-| P2 | 滚动/下拉刷新 | 模拟 touchstart→touchmove→touchend | `scroll-view.touch*()` |
+### 噪音分类引擎（16 条规则）
 
-### 配置数据生成（Skill Step 3 负责）
-
-```
-PAGES              ← app.json 解析
-ELEMENT_CHECKS     ← WXML 标签提取（每个页面取前 4-6 个）
-BUTTON_NAV_TESTS   ← WXML 中 bindtap/click 的按钮组件
-TAB_BAR_ITEMS      ← app.json.tabBar.list
-FORM_TESTS         ← WXML 含 input/t-input/textarea/t-textarea 的页面
-SCROLL_TESTS       ← WXML 含 scroll-view 的页面
-DATA_CHECKS        ← 搜索页等常见 data 字段
-```
-
-### 噪音分类引擎
-
-16 条内置规则，分为两类：
-
-**噪音类（noise）** — 仅报告，不修复：
-- 组件属性类型不匹配、组件内部警告、框架日志
+**噪音类（仅报告，不修复）：**
+- 组件属性类型不匹配、框架日志
 - setData 过大/频繁、Loading 频繁调用
 - 插件/商业化日志
 
-**可修复类（fixable）** — 自动修复或建议：
-- 已废弃 API、引用错误、资源加载失败、脚本异常
-- 非 HTTPS 请求、路由异常、授权相关
-- 资源/页面不存在
-
-### 自动修复
-
-扫描项目 JS 文件，按规则修复或建议：
+**可修复类（自动修复）：**
 - `http://` → `https://`（跳过 mock 目录）
 - `wx.getUserInfo` → 建议迁移
-- `console.log/info/debug` → 建议删除（生产代码）
+- `console.log/info/debug` → 建议删除
 - `wx.show/hideNavigationBarLoading` → 建议迁移
+
+---
 
 ## 技术约束
 
-1. **`.bat` 文件必须用 `cmd.exe /c` 包装** — `spawn()` 不能直接运行 `.bat`
+1. **`.bat` 文件必须用 `cmd.exe /c` 包装** — spawn() 不能直接运行 .bat
 2. **非 tab 页面用 `redirectTo` 不用 `navigateTo`** — 后者撑爆页面栈
 3. **`automator.on('console')` 捕获不全** — 框架级消息（`[system]`、`[Perf]`、`Error: timeout`）不可达，报告中已标注此限制
 4. **搜索测试加 `evaluate()` 回退** — 当 `page.$('input')` 找不到时，直接 setData
 5. **`switchTab`/`redirectTo` 必须加超时** — 用 `Promise.race` 包装，设置 15s 超时
 6. **渲染层错误无法自动化捕获** — WXML/WXSS/数据绑定异常属于框架内部，报告中会注明
-7. **原始 winston 日志文件** — 编译错误可查 DevTools 日志文件（路径见 Step 2）
-8. **`page.$()` 无法选中 npm 自定义组件标签** — CSS 选择器引擎不支持 `t-*` 等 npm 包组件标签名。`testElementExists` 使用 **WXML class 扫描**替代 CSS 选择器：先获取 `pageEl.outerWxml()`，再用 `\b组件名\b` 正则匹配渲染 WXML 中的 CSS 类名（如 `t-tabs` 在 WXML 中渲染为 `<view class="t-tabs tabs--t-tabs ...">`）。交互测试（tap/input）仍需选择器命中，会标记为失败。
-
-## 当此 skill 应被加载
-
-用户提到以下内容时你必须加载此 skill：
-- 使用 `/Wechat-Miniprogram-AI-Debug` 命令
-- 微信小程序 / WeChat / miniprogram 相关的测试、诊断、优化
-- 涉及 `E:\AI\wechatbot` 项目的自动化或调试
-- 关键词：automator / DevTools / CLI / diagnose / 页面路由 / 搜索测试
-- 用户明确说 "用 Wechat-Miniprogram-AI-Debug"
+7. **原始 winston 日志文件** — 编译错误可查 DevTools 日志文件（路径见 Step 3）
+8. **`page.$()` 无法选中 npm 自定义组件标签** — CSS 选择器引擎不支持 `t-*` 等 npm 包组件标签名。`testElementExists` 使用 **WXML class 扫描**替代 CSS 选择器：先获取 `pageEl.outerWxml()`，再用 `\b组件名\b` 正则匹配渲染 WXML 中的 CSS 类名。交互测试（tap/input）仍需选择器命中，会标记为失败。
 
 ---
 
-## CLI 启动自动化服务
+## 触发条件
 
-先验证 app.json 无重复/格式错误，然后自动查找 cli.bat（C: → D: → E: → F:），找到后启动：
-```powershell
-cmd.exe /c "<cli.bat完整路径>" auto --project <项目路径> --auto-port 9420
-```
-等待输出 `√ auto` 确认启动成功。若输出包含 `error`/`错误`，先修复项目配置再重试。
+**此 skill 非显式调用不会自动激活。** 仅当用户明确提到以下内容时才加载：
+- `/Wechat-Miniprogram-AI-Debug` 命令
+- 微信小程序 / WeChat / miniprogram 相关的测试、诊断、优化
+- 涉及 `E:\AI\wechatbot` 项目的自动化或调试
+- 关键词：automator / DevTools / CLI / diagnose / 页面路由 / 搜索测试
+- 用户明确要求 "用 Wechat-Miniprogram-AI-Debug" 或 "用这个 skill"
 
-## 连接
+---
 
-```javascript
-const automator = require('miniprogram-automator');
-const miniProgram = await automator.connect({ wsEndpoint: 'ws://localhost:9420' });
-```
+## 故障排查
 
-## 导航规则
+### CLI 启动失败
+- 检查微信开发者工具是否安装
+- 确认 cli.bat 路径是否正确
+- 尝试手动运行：`cmd.exe /c "<cli.bat完整路径>" auto --project <项目路径> --auto-port 9420`
 
-| 页面类型 | 方法 |
-|----------|------|
-| tabBar 页面 | `switchTab('<页面路径>')` |
-| 非 tab 页面 | `redirectTo('<页面路径>')` — 避免 navigateTo 撑爆页面栈 |
+### 连接超时
+- 确认项目已成功编译（DevTools 无编译错误）
+- 检查端口 9420 是否被占用
+- 尝试重新启动 CLI
 
-## 监听
+### 页面导航失败
+- 检查 app.json 页面路径是否正确
+- 确认页面 .wxml 文件存在
+- 非 tab 页应使用 redirectTo，避免页面栈溢出
 
-```javascript
-miniProgram.on('console', msg => { /* 只捕获 JS 层 log，框架消息不可达 */ });
-miniProgram.on('exception', err => { /* JS 异常 */ });
-```
+### 测试失败
+- tdesign 等 npm 组件可能无法通过 CSS 选择器命中
+- 使用 WXML class 扫描作为备选方案（见下方说明）
+- 某些交互可能需要手动测试验证
 
-## 诊断脚本
+---
 
-`tests/diagnose.js` — 由 Step 3 根据项目结构自动生成，包含 6 个测试模块
+## WXML class 扫描机制
 
-生成依据：
-- `app.json` → 页面列表 + TabBar
-- 各页面 `.wxml` → 组件标签 + 事件绑定
-- `templates/diagnose.js` → 测试逻辑模板
+`testElementExists` 使用 WXML class 扫描替代 `page.$()` 选择器检测 npm 自定义组件。这是因为 tdesign 等 npm 自定义组件在渲染层被展平为原生元素（`view`、`button` 等），其组件名以 CSS class 形式出现（例如 `<view class="t-tabs tabs--t-tabs ...">`）。
 
-生成的脚本会自动过滤不可用的测试（如找不到元素则标记失败而非崩溃），报告会注明所有已知限制。
+**扫描流程：**
+1. 通过 `pageEl.outerWxml()` 获取页面完整 WXML
+2. 用 `\b组件名\b` 正则匹配渲染 WXML 中的 CSS 类名
+3. 匹配到则标记为 ✓，否则标记为 ✗
 
-**WXML class 扫描机制**：`testElementExists` 使用 WXML class 扫描替代 `page.$()` 选择器：获取 `page` 元素的 `outerWxml()`，用 `\b组件名\b` 正则匹配渲染 WXML 中的 CSS 类名。这是因为 tdesign 等 npm 自定义组件在渲染层被展平为原生元素（`view`、`button` 等），其组件名以 CSS class 形式出现（如 `<view class="t-tabs tabs--t-tabs ...">`）。此方法可检测所有渲染的组件，包括 CSS 选择器无法命中的 npm 组件。
+此方法可检测所有渲染的组件，但交互测试（`tap()`、`input()`）仍需 CSS 选择器命中，会标记为失败。
