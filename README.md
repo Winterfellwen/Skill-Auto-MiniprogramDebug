@@ -15,31 +15,36 @@
 <h1 align="center">WeChat Miniprogram AI Debug</h1>
 
 <p align="center">
-  基于 <code>miniprogram-automator</code> 的微信小程序自动化测试 skill。<br>
-  AI 自动驱动 DevTools CLI，遍历页面、测试搜索交互、点击按钮、捕获 console 错误和 JS 异常。
+  基于 <code>miniprogram-automator</code> 的微信小程序 AI 诊断 skill。<br>
+  AI 直接驱动 DevTools CLI，逐页遍历、分析元素、捕获错误、自动修复。
+  <br><strong>不再需要 diagnose.js 脚本，所有操作由 AI 直接使用 automator API 执行。</strong>
 </p>
 
 ---
 
 ## 功能
 
-AI 代理被调用后，自动完成以下操作：
+| 命令 | 说明 |
+|------|------|
+| `/wechat-miniprogram-debug-scan <路径>` | 遍历所有页面，分析元素，诊断错误，输出修复建议（不修改代码） |
 
-1. 启动微信开发者工具自动化服务
-2. 通过 WebSocket 连接
-3. 遍历所有已注册的页面路由
-4. 测试搜索输入交互
-5. 点击按钮并验证页面状态
-6. 捕获 console 错误和 JS 异常
-7. 输出结构化诊断报告
+| `/wechat-miniprogram-debug-fix <路径>` | 遍历所有页面，诊断并自动修复代码问题，备份原项目 |
+AI 驱动完成以下操作：
+1. 启动微信开发者工具自动化服务 + 连接
+2. 读取 app.json 获取页面结构
+3. 自主决定遍历顺序和交互深度
+4. 用 WXML 扫描检测组件存在性
+5. 捕获 console 错误和 JS 异常
+6. 按严重度分类（噪音/可修复）
+7. 输出诊断报告 + 修复方案（Scan）或自动修复 + 修复记录（Fix）
 
-**注意：此 skill 非显式调用不会自动激活。必须通过 `/Wechat-Miniprogram-AI-Debug` 命令或用户明确提及才加载。**
+**注意：此 skill 非显式调用不会自动激活。必须通过 `/wechat-miniprogram-debug-scan` 或 `/wechat-miniprogram-debug-fix` 命令才加载。**
 
 ---
 
 ## 安装
 
-将 `Wechat-Miniprogram-AI-Debug/` 放入以下任意目录：
+将仓库放入以下任意目录：
 
 | 路径 | 作用域 |
 |------|--------|
@@ -57,98 +62,21 @@ AI 代理被调用后，自动完成以下操作：
 ### 斜杠命令
 
 ```
-/Wechat-Miniprogram-AI-Debug [自定义指令]
+/wechat-miniprogram-debug-scan E:\AI\wechatbot
+/wechat-miniprogram-debug-fix E:\AI\wechatbot
 ```
-
-### 示例
-
-```
-帮我调试 E:\AI\wechatbot 这个项目
-用 automator 测试 all pages
-帮我测试 pdf 转换功能
-```
-
-### 命令行参数
-
-诊断脚本 `tests/diagnose.js` 支持以下参数：
-
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `--project <path>` | 项目路径 | 自动从 Skill 传入 |
-| `--cli <path>` | cli.bat 路径 | 自动从 Skill 传入 |
-| `--port <port>` | 自动化服务端口 | `9420` |
-| `--scan-only` | 仅扫描，不修复 | `true`（默认） |
-| `--max-retries <n>` | 最大重试次数 | `1` |
-| `--timeout <ms>` | 页面导航超时 | `15000` |
 
 ### 输出文件
 
-诊断完成后会在项目目录生成：
+扫描完成后在项目目录生成：
 
 | 文件 | 说明 |
 |------|------|
-| `diagnose-report.json` | 完整 JSON 报告 |
-| `diagnose-report.txt` | 人类可读的文本报告 |
-| `diagnose-fix-suggestions.txt` | **修复方案**（扫描模式），包含具体文件路径+行号+修改内容 |
-| `diagnose-fix-log.txt` | **修复记录**（修复模式），包含操作类型（增加/删除/修改）+ 具体变更 |
+| `diagnose-report.txt` | 诊断报告（页面状态 + 错误分类 + 噪音列表） |
+| `diagnose-fix-suggestions.txt` | **修复方案**（Scan 模式），含文件路径+行号+修改内容 |
+| `diagnose-fix-log.txt` | **修复记录**（Fix 模式），含操作类型+变更内容+原因 |
 
----
-
-## 诊断模块
-
-| 模块 | 说明 |
-|------|------|
-| 页面遍历 | 遍历所有页面，验证导航正常 |
-| 搜索功能 | 测试搜索框输入是否正常绑定 data |
-| 元素存在性检查 | 验证核心组件已渲染 |
-| 按钮交互与跳转 | 点击按钮，验证目标页面 |
-| TabBar 切换 | 遍历所有 tab 页 |
-| 表单输入 | input/textarea 输入 |
-| 页面数据校验 | 检查 data 字段类型 |
-| 滚动/下拉刷新 | 模拟 touch 手势 |
-
----
-
-## 案例：`E:\AI\wechatbot - 副本 (2)` 实际扫描结果
-
-2026-05-13 对该项目（27 页、2 个 tab）执行全量扫描，**所有 8 个模块完整输出**：
-
-| 模块 | 结果 | 说明 |
-|------|------|------|
-| 页面遍历 | 27/27 ✅ | 全部页面导航正常 |
-| 搜索功能 | 0/2 ⚠️ | input 找到但 searchKey 绑定问题 |
-| 元素存在性检查 | 20/27 ⚠️ | 部分页面无特殊组件标签 |
-| 按钮交互与跳转 | 0/6 ⚠️ | 按钮 bindtap 模式需适配 |
-| TabBar 切换 | 2/2 ✅ | 两个 tab 全部正常 |
-| 表单输入 | 5/9 ⚠️ | 部分页面无输入框 |
-| 页面数据校验 | ✅ (跳过) | 未配置 data_checks |
-| 滚动/下拉刷新 | 12/13 ⚠️ | touch 模拟在 scroll-view 不稳定 |
-
-Console errors: **0** · Console warnings: **0** · JS 异常: **0**
-
-> 部分模块的失败属于预期行为（项目以基础组件为主，无 tdesign 等复杂 npm 组件），不影响核心功能验证。
-
----
-
-## 故障排查
-
-### CLI 启动失败
-- 确认微信开发者工具已安装
-- 检查 cli.bat 路径是否正确
-- 尝试手动运行：
-  ```cmd
-  "C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat" auto --project <项目路径> --auto-port 9420
-  ```
-
-### 连接超时
-- 检查项目是否有编译错误
-- 确认端口 9420 未被占用
-- 尝试重启开发者工具
-
-### 页面导航失败
-- 检查 `app.json` 页面路径是否正确
-- 确认页面 `.wxml` 文件存在
-- 非 tab 页应使用 `redirectTo`，避免页面栈溢出
+Fix 模式在执行前会备份项目到 `<项目路径>_backup_<时间戳>/`。
 
 ---
 
@@ -157,7 +85,8 @@ Console errors: **0** · Console warnings: **0** · JS 异常: **0**
 | 路径 | 说明 |
 |------|------|
 | `SKILL.md` | Skill 定义和 AI 行为规则 |
-| `templates/diagnose.js` | 诊断脚本模板 |
+| `automator-api.md` | miniprogram-automator API 参考文档（AI 执行时查阅） |
+| `README.md` | 本文件 |
 
 ---
 
