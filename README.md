@@ -27,8 +27,8 @@
 | 命令 | 说明 |
 |------|------|
 | `/wechat-miniprogram-debug-scan <路径>` | 遍历所有页面，分析元素，诊断错误，输出修复建议（不修改代码） |
-
 | `/wechat-miniprogram-debug-fix <路径>` | 遍历所有页面，诊断并自动修复代码问题，备份原项目 |
+
 AI 驱动完成以下操作：
 1. 启动微信开发者工具自动化服务 + 连接
 2. 读取 app.json 获取页面结构
@@ -38,22 +38,34 @@ AI 驱动完成以下操作：
 6. 按严重度分类（噪音/可修复）
 7. 输出诊断报告 + 修复方案（Scan）或自动修复 + 修复记录（Fix）
 
-**注意：此 skill 非显式调用不会自动激活。必须通过 `/wechat-miniprogram-debug-scan` 或 `/wechat-miniprogram-debug-fix` 命令才加载。**
+**此 skill 非显式调用不会自动激活。`/wechat-miniprogram-debug-scan` 和 `/wechat-miniprogram-debug-fix` 命令会自动加载 skill。**
 
 ---
 
 ## 安装
 
-将仓库放入以下任意目录：
+```powershell
+git clone https://github.com/Winterfellwen/Wechat-Miniprogram-AI-Debug.git
+cd Wechat-Miniprogram-AI-Debug
+```
 
-| 路径 | 作用域 |
-|------|--------|
-| `.opencode/skills/<name>/` | 项目 |
-| `~/.config/opencode/skills/<name>/` | 全局 |
-| `.claude/skills/<name>/` | 项目（Claude） |
-| `~/.claude/skills/<name>/` | 全局（Claude） |
-| `.agents/skills/<name>/` | 项目（Agent） |
-| `~/.agents/skills/<name>/` | 全局（Agent） |
+或直接复制 skill 和命令到全局：
+
+```powershell
+# skill
+cp -r .opencode/skills/wechat-miniprogram-debug ~/.config/opencode/skills/
+# commands
+cp .opencode/commands/wechat-miniprogram-debug-*.md ~/.config/opencode/commands/
+```
+
+也可复制到以下任意位置：
+
+| 路径 | 作用域 | 说明 |
+|------|--------|------|
+| `.opencode/skills/<name>/` | 项目 | 本仓库已自带 |
+| `~/.config/opencode/skills/<name>/` | 全局 | 所有项目可用 |
+| `.opencode/commands/<name>.md` | 项目 | 本仓库已自带 |
+| `~/.config/opencode/commands/<name>.md` | 全局 | 所有项目可用 |
 
 ---
 
@@ -84,8 +96,10 @@ Fix 模式在执行前会备份项目到 `<项目路径>_backup_<时间戳>/`。
 
 | 路径 | 说明 |
 |------|------|
-| `SKILL.md` | Skill 定义和 AI 行为规则 |
-| `automator-api.md` | miniprogram-automator API 参考文档（AI 执行时查阅） |
+| `.opencode/skills/wechat-miniprogram-debug/SKILL.md` | Skill 定义和 AI 行为规则 |
+| `.opencode/skills/wechat-miniprogram-debug/automator-api.md` | miniprogram-automator API 参考文档（AI 执行时查阅） |
+| `.opencode/commands/wechat-miniprogram-debug-scan.md` | Scan 命令（自动加载 skill） |
+| `.opencode/commands/wechat-miniprogram-debug-fix.md` | Fix 命令（自动加载 skill） |
 | `README.md` | 本文件 |
 
 ---
