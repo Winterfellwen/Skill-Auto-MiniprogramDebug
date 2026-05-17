@@ -14,6 +14,7 @@ metadata:
 2. **修改项目源码不受限**。修复模式下直接 edit `.js`/`.wxml`/`.wxss` 等。
 3. 通过 `child_process` 启动 CLI，用 `automator.connect()` 连接。
 4. 完整 API 参考见同目录下 [`automator-api.md`](automator-api.md)。
+5. **`node -e` 中 async IIFE 必须用 `(async()=>{...})()` 格式**，不要用 `(async(){...})()`（后者是语法错误）。
 
 # 通用流程
 
